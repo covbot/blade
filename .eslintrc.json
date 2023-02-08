@@ -1,0 +1,10 @@
+{
+	"extends": ["@sirse-dev/eslint-config"],
+	"rules": {
+		"unicorn/no-null": "off",
+		"unicorn/no-useless-undefined": "off",
+		"unicorn/prefer-export-from": "off",
+		"lodash/import-scope": "off",
+		"unicorn/prevent-abbreviations": "off"
+	}
+}

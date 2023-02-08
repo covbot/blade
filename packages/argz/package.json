@@ -1,0 +1,12 @@
+{
+	"name": "@covbot/blade-argz",
+	"description": "",
+	"version": "0.0.0",
+	"main": "index.js",
+	"author": "",
+	"license": "ISC",
+	"keywords": [],
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	}
+}
