@@ -1,6 +1,6 @@
 import { RawCreateParams, ZodString } from 'zod';
-import { argumentUtils } from '../argumentUtils';
 import { NamedArgument } from './NamedArgument';
+import { argumentUtils } from '../argumentUtils';
 
 export type StringRawCreateParams = RawCreateParams & { coerce?: true | undefined };
 
