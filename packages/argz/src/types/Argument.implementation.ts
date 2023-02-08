@@ -6,6 +6,7 @@ import { DefaultArgument } from './DefaultArgument';
 import { EffectsArgument } from './EffectsArgument';
 import { NullableArgument } from './NullableArgument';
 import { OptionalArgument } from './OptionalArgument';
+import { PipelineArgument } from './PipelineArgument';
 import { UnionArgument } from './UnionArgument';
 
 Argument.prototype.superRefine = function (
@@ -72,4 +73,8 @@ Argument.prototype.nullish = function (this: Argument) {
 
 Argument.prototype.or = function <T extends ArgumentAny>(this: Argument, option: T): UnionArgument<[Argument, T]> {
 	return UnionArgument.create([this, option], this._schema._def);
+};
+
+Argument.prototype.pipe = function <T extends ZodTypeAny>(this: Argument, schema: T): PipelineArgument<Argument, T> {
+	return PipelineArgument.create(this, schema);
 };
