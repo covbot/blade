@@ -1,7 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { ZodError } from 'zod';
-import { ArgumentVector } from '../../src/types/ArgumentVector';
-import { StringArgument } from '../../src/types/StringArgument';
+import { ArgumentVector, StringArgument } from '../../src/api';
 
 describe('StringArgument', () => {
 	it('must wrap default zod methods', () => {

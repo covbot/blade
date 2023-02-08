@@ -1,5 +1,5 @@
 import { TypeOf, ZodTypeAny } from 'zod';
-import { Argument } from './Argument';
+import { Argument } from './Argument.internal';
 import { CastResult } from './ArgumentApi';
 import { CastError } from '../CastError';
 

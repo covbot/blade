@@ -1,4 +1,4 @@
-import { ArgumentAny } from './types/Argument';
+import { ArgumentAny } from './types/Argument.internal';
 
 export namespace objectUtil {
 	export type ObjectArgumentRawShape = Record<string, ArgumentAny>;

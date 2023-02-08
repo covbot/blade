@@ -1,5 +1,5 @@
 import { RawCreateParams, ZodNever } from 'zod';
-import { Argument } from './Argument';
+import { Argument } from './Argument.internal';
 import { ArgumentApi } from './ArgumentApi';
 
 export class NeverArgument extends Argument<ZodNever> {

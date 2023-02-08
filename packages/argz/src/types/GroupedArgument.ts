@@ -1,5 +1,5 @@
 import { ZodTypeAny } from 'zod';
-import { Argument } from './Argument';
+import { Argument } from './Argument.internal';
 import { ArgumentApi, ArgumentType, KeyValuePair } from './ArgumentApi';
 import { NamedArgument, NamedArgumentDefinition } from './NamedArgument';
 

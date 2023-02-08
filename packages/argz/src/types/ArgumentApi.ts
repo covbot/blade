@@ -1,5 +1,5 @@
 import { ZodTypeAny } from 'zod';
-import { ArgumentAny } from './Argument';
+import { ArgumentAny } from './Argument.internal';
 import { CastError } from '../CastError';
 
 export enum ArgumentType {
