@@ -5,8 +5,20 @@ import { argumentUtils } from '../argumentUtils';
 export type StringRawCreateParams = RawCreateParams & { coerce?: true | undefined };
 
 export class StringArgument extends NamedArgument<ZodString> {
-	public _cast = (value: string | undefined) => {
-		return value || '';
+	protected _cast = (value: string | undefined) => {
+		if (this._schema._def.coerce) {
+			return value || '';
+		}
+
+		if (value === 'null') {
+			return null;
+		}
+
+		if (value === 'undefined') {
+			return undefined;
+		}
+
+		return value;
 	};
 
 	public static create = (params?: StringRawCreateParams & { name?: string }): StringArgument => {

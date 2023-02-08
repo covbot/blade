@@ -3,7 +3,7 @@ import { NamedArgument } from './NamedArgument';
 import { CastError } from '../CastError';
 
 export class BooleanArgument extends NamedArgument<ZodBoolean> {
-	public _cast = (value: string | undefined): boolean | undefined => {
+	protected _cast = (value: string | undefined): boolean | undefined => {
 		if (value === undefined) {
 			return value;
 		}

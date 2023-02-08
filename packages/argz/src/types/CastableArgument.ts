@@ -7,7 +7,7 @@ export abstract class CastableArgument<TSchema extends ZodTypeAny = ZodTypeAny, 
 	TSchema,
 	TDefinition
 > {
-	protected abstract _cast(value: string | undefined): TSchema['_input'] | undefined;
+	protected abstract _cast(value: string | undefined): unknown;
 
 	protected _tryCast = (value: string | undefined): CastResult<TypeOf<TSchema>> => {
 		try {

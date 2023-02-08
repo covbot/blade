@@ -60,7 +60,7 @@ export class ObjectArgument<
 		return argumentNameMap;
 	};
 
-	public _getChildArgument = (
+	protected _getChildArgument = (
 		childName: string,
 		getArgumentName: (key: string) => string,
 	): KeyValuePair<Argument> | undefined => {
@@ -86,7 +86,7 @@ export class ObjectArgument<
 		return undefined;
 	};
 
-	public _getIterableChildArguments = (): Array<KeyValuePair<Argument, string>> => {
+	protected _getIterableChildArguments = (): Array<KeyValuePair<Argument, string>> => {
 		const { keys } = this._schema._getCached();
 		const shape = this._getCachedShape();
 
@@ -101,7 +101,7 @@ export class ObjectArgument<
 		return output;
 	};
 
-	public _cast = (value: string | undefined) => {
+	protected _cast = (value: string | undefined) => {
 		if (value === undefined) {
 			return value;
 		}
