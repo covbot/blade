@@ -1,5 +1,9 @@
 import { ZodTypeAny } from 'zod';
 
+interface ArgumentConstructor<TSchema extends ZodTypeAny = ZodTypeAny, TDefinition = {}> {
+	new (schema: TSchema, definition: TDefinition): Argument<TSchema, TDefinition>;
+}
+
 export abstract class Argument<TSchema extends ZodTypeAny = ZodTypeAny, TDefinition = {}> {
 	public readonly _schema: TSchema;
 	protected readonly _definition: TDefinition;
@@ -14,9 +18,9 @@ export abstract class Argument<TSchema extends ZodTypeAny = ZodTypeAny, TDefinit
 		definition ??= this._definition;
 
 		// eslint-disable-next-line @typescript-eslint/naming-convention
-		const This = Object.getPrototypeOf(this);
+		const This = this.constructor as ArgumentConstructor<TSchema, TDefinition>;
 
-		return new This(schema, definition);
+		return new This(schema, definition) as this;
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars

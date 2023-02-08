@@ -34,6 +34,7 @@ importers:
     dependencies:
       kebab-case: 1.0.2
       lodash.set: 4.3.2
+      zod: 3.20.3
     devDependencies:
       '@jest/globals': 29.4.2
       '@types/jest': 29.4.0
@@ -43,7 +44,6 @@ importers:
       jest-watch-typeahead: 2.2.2_jest@29.4.2
       ts-jest: 29.0.5_gelezmms3va3pnkofxaadhcvma
       typescript: 4.9.5
-      zod: 3.20.3
 
 packages:
 
@@ -4118,7 +4118,7 @@ packages:
 
   /zod/3.20.3:
     resolution: {integrity: sha512-+MLeeUcLTlnzVo5xDn9+LVN9oX4esvgZ7qfZczBN+YVUvZBafIrPPVyG2WdjMWU2Qkb2ZAh2M8lpqf1wIoGqJQ==}
-    dev: true
+    dev: false
 
   github.com/covbot/configs/43855539f0fcf1baadd504d1132d28ce492b5eaa:
     resolution: {tarball: https://codeload.github.com/covbot/configs/tar.gz/43855539f0fcf1baadd504d1132d28ce492b5eaa}

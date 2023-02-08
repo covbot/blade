@@ -5,10 +5,7 @@
 		},
 		{
 			"path": "./packages/argz/tsconfig.json"
-		},
-		{
-			"path": "./packages/argz/tsconfig.test.json"
 		}
 	],
-	"include": []
+	"include": ["**/*.ts"]
 }
