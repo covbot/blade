@@ -1,4 +1,4 @@
-import { util, ZodBranded, ZodDefault, ZodTypeAny } from 'zod';
+import { util, ZodBranded, ZodDefault, ZodNullable, ZodOptional, ZodTypeAny } from 'zod';
 import { ArgumentApi } from './ArgumentApi';
 
 interface ArgumentConstructor<TSchema extends ZodTypeAny = ZodTypeAny, TDefinition = {}> {
@@ -18,6 +18,9 @@ export abstract class Argument<TSchema extends ZodTypeAny = ZodTypeAny, TDefinit
 		this._clone = this._clone.bind(this);
 		this.default = this.default.bind(this);
 		this.describe = this.describe.bind(this);
+		this.optional = this.optional.bind(this);
+		this.nullable = this.nullable.bind(this);
+		this.nullish = this.nullish.bind(this);
 	}
 
 	protected _clone(schema?: TSchema, definition?: TDefinition): this {
@@ -50,6 +53,18 @@ export abstract class Argument<TSchema extends ZodTypeAny = ZodTypeAny, TDefinit
 	): DefaultArgument<this> {
 		return new DefaultArgument<this>(this._schema.default(defaultValue), { inner: this });
 	}
+
+	public optional(): OptionalArgument<this> {
+		return new OptionalArgument<this>(this._schema.optional(), { inner: this });
+	}
+
+	public nullable(): NullableArgument<this> {
+		return new NullableArgument<this>(this._schema.nullable(), { inner: this });
+	}
+
+	public nullish(): OptionalArgument<NullableArgument<this>> {
+		return this.nullable().optional();
+	}
 }
 
 export type WrappedArgumentDefinition<TArgument extends ArgumentAny> = {
@@ -80,5 +95,19 @@ export class BrandedArgument<
 	TArgument extends ArgumentAny,
 	TBrand extends string | number | symbol,
 > extends WrappedArgument<TArgument, ZodBranded<TArgument['_schema'], TBrand>> {
+	public unwrap = this._unwrap;
+}
+
+export class NullableArgument<TArgument extends ArgumentAny> extends WrappedArgument<
+	TArgument,
+	ZodNullable<TArgument['_schema']>
+> {
+	public unwrap = this._unwrap;
+}
+
+export class OptionalArgument<TArgument extends ArgumentAny> extends WrappedArgument<
+	TArgument,
+	ZodOptional<TArgument['_schema']>
+> {
 	public unwrap = this._unwrap;
 }
