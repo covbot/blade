@@ -186,4 +186,32 @@ describe('UnionArgument', () => {
 			},
 		});
 	});
+
+	/**
+	 * FIXME:
+	 * Same as before, UnionArgument takes first matching argument, ignoring its name.
+	 */
+	it.skip('must correctly pick types by names', () => {
+		const schema = ArgumentVector.create(
+			UnionArgument.create([
+				StringArgument.create({ name: 'email' }).email(),
+				StringArgument.create({ name: 'login' }).min(6),
+			]),
+		);
+
+		expect(schema.safeParse(['--email', 'a@a.com'])).toStrictEqual({
+			success: true,
+			data: 'a@a.com',
+		});
+
+		expect(schema.safeParse(['--login', 'should work'])).toStrictEqual({
+			success: true,
+			data: 'should work',
+		});
+
+		expect(schema.safeParse(['--login', 'no'])).toStrictEqual({
+			success: false,
+			error: expect.any(ZodError),
+		});
+	});
 });

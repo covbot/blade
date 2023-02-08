@@ -6,6 +6,7 @@ import { DefaultArgument } from './DefaultArgument';
 import { EffectsArgument } from './EffectsArgument';
 import { NullableArgument } from './NullableArgument';
 import { OptionalArgument } from './OptionalArgument';
+import { UnionArgument } from './UnionArgument';
 
 Argument.prototype.superRefine = function (
 	this: ArgumentAny,
@@ -67,4 +68,8 @@ Argument.prototype.nullable = function (this: ArgumentAny): NullableArgument<Arg
 
 Argument.prototype.nullish = function (this: Argument) {
 	return this.nullable().optional();
+};
+
+Argument.prototype.or = function <T extends ArgumentAny>(this: Argument, option: T): UnionArgument<[Argument, T]> {
+	return UnionArgument.create([this, option], this._schema._def);
 };
