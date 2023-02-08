@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { ZodError, ZodIssueCode } from 'zod';
+import { z, ZodError, ZodIssueCode } from 'zod';
 import { ArgumentVector, StringArgument } from '../../src/api';
 
 describe('Argument', () => {
@@ -360,6 +360,24 @@ describe('Argument', () => {
 			expect(schema.safeParse(['--bye', 'this pass'])).toStrictEqual({
 				success: true,
 				data: 'this pass',
+			});
+		});
+	});
+
+	describe('pipe', () => {
+		it('must pipe schema to argument', () => {
+			const schema = ArgumentVector.create(
+				StringArgument.create({ name: 'hello' }).pipe(z.number({ coerce: true })),
+			);
+
+			expect(schema.safeParse(['--hello', '2'])).toStrictEqual({
+				success: true,
+				data: 2,
+			});
+
+			expect(schema.safeParse(['--hello', 'asdf'])).toStrictEqual({
+				success: false,
+				error: expect.any(ZodError),
 			});
 		});
 	});

@@ -35,6 +35,8 @@ export abstract class Argument<TSchema extends ZodTypeAny = ZodTypeAny, TDefinit
 		this.optional = this.optional.bind(this);
 		this.nullable = this.nullable.bind(this);
 		this.nullish = this.nullish.bind(this);
+		this.or = this.or.bind(this);
+		this.pipe = this.pipe.bind(this);
 	}
 
 	protected _clone(schema?: TSchema, definition?: TDefinition): this {
@@ -121,4 +123,7 @@ export abstract class Argument<TSchema extends ZodTypeAny = ZodTypeAny, TDefinit
 
 	// @ts-expect-error
 	public or<T extends ArgumentAny>(option: T): import('./UnionArgument').UnionArgument<[this, T]>;
+
+	// @ts-expect-error
+	public pipe<T extends ZodTypeAny>(schema: T): import('./PipelineArgument').PipelineArgument<this, T>;
 }
