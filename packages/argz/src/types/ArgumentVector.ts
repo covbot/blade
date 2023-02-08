@@ -39,6 +39,17 @@ const longArgumentExpressionRe = /^--(?<name>[^\s=]+)=(?<value>.+)$/;
 const longArgumentNameRe = /^--(?<name>[^\s=]+)$/;
 const shortArgumentRe = /^-(?<flags>[^\s=]+)$/;
 
+const synchronize = <TInput, TOutput>(
+	out: ParseReturnType<TInput>,
+	handler: (out: SyncParseReturnType<TInput>) => ParseReturnType<TOutput>,
+): ParseReturnType<TOutput> => {
+	if (out instanceof Promise) {
+		return out.then((syncOut) => handler(syncOut));
+	}
+
+	return handler(out);
+};
+
 export class ArgumentVector<TArgument extends ArgumentAny, TOutput = TypeOf<TArgument['_schema']>> extends ZodType<
 	TOutput,
 	ArgumentVectorDefinition<TArgument>,
@@ -62,7 +73,7 @@ export class ArgumentVector<TArgument extends ArgumentAny, TOutput = TypeOf<TArg
 				const api: ArgumentApi = currentSchema._getApi();
 
 				if (api.type === ArgumentType.GROUP) {
-					const value = api.getChildArgument(segment, getArgumentName);
+					const value: KeyValuePair<ArgumentAny> | undefined = api.getChildArgument(segment, getArgumentName);
 					if (value === undefined) {
 						return undefined;
 					}
@@ -140,29 +151,36 @@ export class ArgumentVector<TArgument extends ArgumentAny, TOutput = TypeOf<TArg
 	 * The purpose of ArgzArguments class is to process string array from "process.argv".
 	 * This method extracts key-value pairs from this array, and passes it into given schemas.
 	 */
-	public _parse(input: ParseInput): ParseReturnType<TOutput> {
+	public _parse = (input: ParseInput): ParseReturnType<TOutput> => {
 		const castResult = this._cast(input);
 
-		if (isAborted(castResult)) {
-			return INVALID;
-		}
+		return synchronize(castResult, (syncResult) => {
+			if (isAborted(syncResult)) {
+				return INVALID;
+			}
 
-		return this._def.configSchema._schema._parse({
-			data: castResult.value,
-			path: [],
-			parent: this._getOrReturnCtx(input),
+			return this._def.configSchema._schema._parse({
+				data: syncResult.value,
+				path: [],
+				parent: this._getOrReturnCtx(input),
+			});
 		});
-	}
+	};
 
-	public _cast(input: ParseInput): SyncParseReturnType<TOutput> {
-		const result = argumentsSchema._parseSync(input);
+	public _cast = (input: ParseInput): ParseReturnType<TOutput> => {
+		const result = argumentsSchema._parse(input);
 
-		if (isAborted(result)) {
-			return result;
-		}
+		return synchronize(result, (syncResult) => {
+			if (isAborted(syncResult)) {
+				return syncResult;
+			}
 
+			return this._doCast(input, syncResult);
+		});
+	};
+
+	private _doCast = (input: ParseInput, result: OK<string[]> | DIRTY<string[]>): ParseReturnType<TOutput> => {
 		const { status, ctx } = this._processInputParams(input);
-
 		const argv = result.value;
 
 		const positional: string[] = [];
@@ -337,7 +355,7 @@ export class ArgumentVector<TArgument extends ArgumentAny, TOutput = TypeOf<TArg
 		}
 
 		return { status: status.value, value: constructedObjectWrapper.value } as OK<TOutput> | DIRTY<TOutput>;
-	}
+	};
 
 	static create = <T extends ArgumentAny>(schema: T): ArgumentVector<T> => {
 		return new ArgumentVector({ configSchema: schema });
