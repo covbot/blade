@@ -1,10 +1,12 @@
 import { describe, it, expect } from '@jest/globals';
 import { ParseInput, z } from 'zod';
-import { ArgumentVector } from '../../src/types/ArgumentVector';
-import { BypassedArrayArgument } from '../../src/types/BypassedArrayArgument';
-import { ObjectArgument } from '../../src/types/ObjectArgument';
-import { PositionalArrayArgument } from '../../src/types/PositionalArrayArgument';
-import { StringArgument } from '../../src/types/StringArgument';
+import {
+	ArgumentVector,
+	BypassedArrayArgument,
+	ObjectArgument,
+	PositionalArrayArgument,
+	StringArgument,
+} from '../../src/api';
 
 const createMockZodInput = (data: string[]): ParseInput => ({
 	data,
@@ -23,21 +25,21 @@ const createMockZodInput = (data: string[]): ParseInput => ({
 
 describe('ArgumentVector', () => {
 	it('must cast simple arguments', () => {
-		const argz = ArgumentVector.create(StringArgument.create({ name: 'hello' }));
+		const schema = ArgumentVector.create(StringArgument.create({ name: 'hello' }));
 
-		expect(argz._cast(createMockZodInput(['--hello', 'world']))).toStrictEqual({
+		expect(schema._cast(createMockZodInput(['--hello', 'world']))).toStrictEqual({
 			status: 'valid',
 			value: 'world',
 		});
 
-		expect(argz._cast(createMockZodInput(['--hello=world']))).toStrictEqual({
+		expect(schema._cast(createMockZodInput(['--hello=world']))).toStrictEqual({
 			status: 'valid',
 			value: 'world',
 		});
 	});
 
 	it('must cast object arguments', () => {
-		const argz = ArgumentVector.create(
+		const schema = ArgumentVector.create(
 			ObjectArgument.create({
 				hello: ObjectArgument.create({
 					bye: StringArgument.create(),
@@ -45,7 +47,7 @@ describe('ArgumentVector', () => {
 			}),
 		);
 
-		expect(argz._cast(createMockZodInput(['--hello.bye', 'world']))).toStrictEqual({
+		expect(schema._cast(createMockZodInput(['--hello.bye', 'world']))).toStrictEqual({
 			status: 'valid',
 			value: {
 				hello: {
@@ -54,7 +56,7 @@ describe('ArgumentVector', () => {
 			},
 		});
 
-		expect(argz._cast(createMockZodInput(['--hello.bye=world']))).toStrictEqual({
+		expect(schema._cast(createMockZodInput(['--hello.bye=world']))).toStrictEqual({
 			status: 'valid',
 			value: {
 				hello: {
@@ -63,7 +65,7 @@ describe('ArgumentVector', () => {
 			},
 		});
 
-		expect(argz._cast(createMockZodInput(['--hello', '{ "bye": "world" }']))).toStrictEqual({
+		expect(schema._cast(createMockZodInput(['--hello', '{ "bye": "world" }']))).toStrictEqual({
 			status: 'valid',
 			value: {
 				hello: {
@@ -72,7 +74,7 @@ describe('ArgumentVector', () => {
 			},
 		});
 
-		expect(argz._cast(createMockZodInput(['--hello={ "bye": "world" }']))).toStrictEqual({
+		expect(schema._cast(createMockZodInput(['--hello={ "bye": "world" }']))).toStrictEqual({
 			status: 'valid',
 			value: {
 				hello: {

@@ -1,5 +1,5 @@
 import { objectOutputType, RawCreateParams, UnknownKeysParam, ZodNever, ZodObject } from 'zod';
-import { Argument, ArgumentAny } from './Argument';
+import { Argument, ArgumentAny } from './Argument.internal';
 import { isNamedApi, KeyValuePair } from './ArgumentApi';
 import { GroupedArgument } from './GroupedArgument';
 import { NamedArgumentDefinition } from './NamedArgument';

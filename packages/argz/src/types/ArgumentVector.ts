@@ -17,7 +17,7 @@ import {
 	DIRTY,
 	SyncParseReturnType,
 } from 'zod';
-import { Argument, ArgumentAny } from './Argument';
+import { Argument, ArgumentAny } from './Argument.internal';
 import {
 	ArgumentApi,
 	ArgumentType,
@@ -50,7 +50,7 @@ const synchronize = <TInput, TOutput>(
 	return handler(out);
 };
 
-export class ArgumentVector<TArgument extends ArgumentAny, TOutput = TypeOf<TArgument['_schema']>> extends ZodType<
+export class ArgumentVector<TArgument extends Argument, TOutput = TypeOf<TArgument['_schema']>> extends ZodType<
 	TOutput,
 	ArgumentVectorDefinition<TArgument>,
 	string[]

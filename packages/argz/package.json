@@ -10,6 +10,11 @@
 		"test": "jest",
 		"test:watch": "pnpm run test --watch"
 	},
+	"dependencies": {
+		"kebab-case": "^1.0.2",
+		"lodash.set": "^4.3.2",
+		"zod": "^3.20.3"
+	},
 	"devDependencies": {
 		"@jest/globals": "^29.4.2",
 		"@types/jest": "^29.4.0",
@@ -19,10 +24,5 @@
 		"jest-watch-typeahead": "^2.2.2",
 		"ts-jest": "^29.0.5",
 		"typescript": "^4.9.5"
-	},
-	"dependencies": {
-		"kebab-case": "^1.0.2",
-		"lodash.set": "^4.3.2",
-		"zod": "^3.20.3"
 	}
 }

@@ -1,12 +1,13 @@
 import { describe, it, expect } from '@jest/globals';
 import { z, ZodError } from 'zod';
-import { ArgumentVector } from '../../src/types/ArgumentVector';
-import { BypassedArrayArgument } from '../../src/types/BypassedArrayArgument';
-import { ObjectArgument } from '../../src/types/ObjectArgument';
-import { PositionalArrayArgument } from '../../src/types/PositionalArrayArgument';
-import { StringArgument } from '../../src/types/StringArgument';
-import { UnionArgument } from '../../src/types/UnionArgument';
-
+import {
+	ArgumentVector,
+	BypassedArrayArgument,
+	ObjectArgument,
+	PositionalArrayArgument,
+	StringArgument,
+	UnionArgument,
+} from '../../src/api';
 describe('UnionArgument', () => {
 	it('must work with positional arguments', () => {
 		const schema = ArgumentVector.create(

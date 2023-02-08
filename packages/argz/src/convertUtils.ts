@@ -1,4 +1,4 @@
-import { ArgumentAny } from './types/Argument';
+import { ArgumentAny } from './types/Argument.internal';
 import { UnionArgumentOptions } from './types/UnionArgument';
 
 export namespace convertUtils {

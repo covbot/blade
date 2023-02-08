@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import { ZodUnion, RawCreateParams } from 'zod';
-import { Argument, ArgumentAny } from './Argument';
+import { Argument, ArgumentAny } from './Argument.internal';
 import {
 	ArgumentType,
 	NamedArgumentApi,
