@@ -51,15 +51,19 @@ export abstract class Argument<TSchema extends ZodTypeAny = ZodTypeAny, TDefinit
 	public default(
 		defaultValue: util.noUndefined<TSchema['_input']> | (() => util.noUndefined<TSchema['_input']>),
 	): DefaultArgument<this> {
-		return new DefaultArgument<this>(this._schema.default(defaultValue), { inner: this });
+		return new DefaultArgument(this._schema.default(defaultValue), { inner: this });
+	}
+
+	public brand<TBrand extends string | number | symbol>(brand?: TBrand): BrandedArgument<this, TBrand> {
+		return new BrandedArgument(this._schema.brand(brand), { inner: this });
 	}
 
 	public optional(): OptionalArgument<this> {
-		return new OptionalArgument<this>(this._schema.optional(), { inner: this });
+		return new OptionalArgument(this._schema.optional(), { inner: this });
 	}
 
 	public nullable(): NullableArgument<this> {
-		return new NullableArgument<this>(this._schema.nullable(), { inner: this });
+		return new NullableArgument(this._schema.nullable(), { inner: this });
 	}
 
 	public nullish(): OptionalArgument<NullableArgument<this>> {
