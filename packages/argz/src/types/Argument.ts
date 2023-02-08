@@ -1,4 +1,4 @@
-import { util, ZodDefault, ZodTypeAny } from 'zod';
+import { util, ZodBranded, ZodDefault, ZodTypeAny } from 'zod';
 import { ArgumentApi } from './ArgumentApi';
 
 interface ArgumentConstructor<TSchema extends ZodTypeAny = ZodTypeAny, TDefinition = {}> {
@@ -43,26 +43,42 @@ export abstract class Argument<TSchema extends ZodTypeAny = ZodTypeAny, TDefinit
 		return this._clone(schema);
 	}
 
+	public default(defaultValue: util.noUndefined<TSchema['_input']>): DefaultArgument<this>;
+	public default(defaultValue: () => util.noUndefined<TSchema['_input']>): DefaultArgument<this>;
 	public default(
 		defaultValue: util.noUndefined<TSchema['_input']> | (() => util.noUndefined<TSchema['_input']>),
 	): DefaultArgument<this> {
-		return new DefaultArgument<this>(this._schema.default(defaultValue), { innerArgument: this });
+		return new DefaultArgument<this>(this._schema.default(defaultValue), { inner: this });
 	}
 }
 
-export type DefaultArgumentDefinition<TArgument extends ArgumentAny> = {
-	innerArgument: TArgument;
+export type WrappedArgumentDefinition<TArgument extends ArgumentAny> = {
+	inner: TArgument;
 };
 
-export class DefaultArgument<TArgument extends ArgumentAny> extends Argument<
-	ZodDefault<TArgument['_schema']>,
-	DefaultArgumentDefinition<TArgument>
-> {
+export class WrappedArgument<
+	TArgument extends ArgumentAny = ArgumentAny,
+	TSchema extends ZodTypeAny = ZodTypeAny,
+> extends Argument<TSchema, WrappedArgumentDefinition<TArgument>> {
 	public _getApi = (): ArgumentApi => {
-		return this._definition.innerArgument._getApi();
+		return this._definition.inner._getApi();
 	};
 
-	public removeDefault = (): TArgument => {
-		return this._definition.innerArgument;
+	protected _unwrap = () => {
+		return this._definition.inner;
 	};
+}
+
+export class DefaultArgument<TArgument extends ArgumentAny> extends WrappedArgument<
+	TArgument,
+	ZodDefault<TArgument['_schema']>
+> {
+	public removeDefault = this._unwrap;
+}
+
+export class BrandedArgument<
+	TArgument extends ArgumentAny,
+	TBrand extends string | number | symbol,
+> extends WrappedArgument<TArgument, ZodBranded<TArgument['_schema'], TBrand>> {
+	public unwrap = this._unwrap;
 }
