@@ -1,12 +1,12 @@
 import { objectOutputType, RawCreateParams, UnknownKeysParam, ZodNever, ZodObject } from 'zod';
-import { CastError } from '../CastError';
-import { objectUtil } from '../objectUtil';
-import { Argument } from './Argument';
-import { ArgumentGroup, KeyValuePair } from './ArgumentGroup';
-import { CastableArgument } from './CastableArgument';
-import { NamedArgument, NamedArgumentDefinition } from './NamedArgument';
+import { Argument, ArgumentAny } from './Argument';
+import { isNamedApi, KeyValuePair } from './ArgumentApi';
+import { GroupedArgument } from './GroupedArgument';
+import { NamedArgumentDefinition } from './NamedArgument';
 import { NeverArgument } from './NeverArgument';
 import { StringArgument } from './StringArgument';
+import { CastError } from '../CastError';
+import { objectUtil } from '../objectUtil';
 
 export type ObjectArgumentDefinition<TShape extends objectUtil.ObjectArgumentRawShape, TCatchall extends Argument> = {
 	catchall: TCatchall;
@@ -16,13 +16,13 @@ export type ObjectArgumentDefinition<TShape extends objectUtil.ObjectArgumentRaw
 export class ObjectArgument<
 	TShape extends objectUtil.ObjectArgumentRawShape,
 	TUnknownKeys extends UnknownKeysParam = 'strip',
-	TCatchall extends CastableArgument = CastableArgument,
+	TCatchall extends Argument = ArgumentAny,
 	TOutput = objectOutputType<objectUtil.ConvertShape<TShape>, TCatchall['_schema']>,
-> extends ArgumentGroup<
+> extends GroupedArgument<
 	ZodObject<objectUtil.ConvertShape<TShape>, TUnknownKeys, TCatchall['_schema'], TOutput>,
 	ObjectArgumentDefinition<TShape, TCatchall>
 > {
-	private _cachedArgumentNameMap: Map<string, KeyValuePair<NamedArgument>> | undefined = undefined;
+	private _cachedArgumentNameMap: Map<string, KeyValuePair<Argument>> | undefined = undefined;
 	private _cachedConverter: ((key: string) => string) | undefined = undefined;
 	private _cachedShape: TShape | undefined = undefined;
 
@@ -34,9 +34,7 @@ export class ObjectArgument<
 		return this._cachedShape;
 	};
 
-	private _getArgumentNameMap = (
-		getArgumentName: (key: string) => string,
-	): Map<string, KeyValuePair<NamedArgument>> => {
+	private _getArgumentNameMap = (getArgumentName: (key: string) => string): Map<string, KeyValuePair<Argument>> => {
 		if (this._cachedArgumentNameMap && this._cachedConverter === getArgumentName) {
 			return this._cachedArgumentNameMap;
 		}
@@ -44,12 +42,13 @@ export class ObjectArgument<
 		const { keys } = this._schema._getCached();
 		const shape = this._getCachedShape();
 
-		const argumentNameMap = new Map<string, KeyValuePair<NamedArgument>>();
+		const argumentNameMap = new Map<string, KeyValuePair<Argument>>();
 		for (const key of keys) {
 			const childSchema = shape[key];
+			const childApi = childSchema?._getApi?.();
 
-			if (childSchema && childSchema instanceof NamedArgument) {
-				const childNames = childSchema._getNames(key, getArgumentName);
+			if (childSchema && childApi && isNamedApi(childApi)) {
+				const childNames = childApi.getNames(key, getArgumentName);
 				for (const childName of childNames) {
 					argumentNameMap.set(childName, { key, value: childSchema });
 				}
@@ -61,10 +60,10 @@ export class ObjectArgument<
 		return argumentNameMap;
 	};
 
-	public _getChildArgument(
+	protected _getChildArgument = (
 		childName: string,
 		getArgumentName: (key: string) => string,
-	): KeyValuePair<CastableArgument> | undefined {
+	): KeyValuePair<Argument> | undefined => {
 		const argumentNameMap = this._getArgumentNameMap(getArgumentName);
 
 		if (argumentNameMap.has(childName)) {
@@ -85,9 +84,9 @@ export class ObjectArgument<
 		}
 
 		return undefined;
-	}
+	};
 
-	public _getIterableChildArguments(): Array<KeyValuePair<Argument, string>> {
+	protected _getIterableChildArguments = (): Array<KeyValuePair<Argument, string>> => {
 		const { keys } = this._schema._getCached();
 		const shape = this._getCachedShape();
 
@@ -100,9 +99,9 @@ export class ObjectArgument<
 		}
 
 		return output;
-	}
+	};
 
-	public _cast(value: string | undefined) {
+	protected _cast = (value: string | undefined) => {
 		if (value === undefined) {
 			return value;
 		}
@@ -112,7 +111,7 @@ export class ObjectArgument<
 		} catch (error: unknown) {
 			throw new CastError(`Cannot cast "${value}" into object.`, { cause: error });
 		}
-	}
+	};
 
 	public static create<TShape extends objectUtil.ObjectArgumentRawShape>(
 		shape: TShape,

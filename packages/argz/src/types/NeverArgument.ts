@@ -1,13 +1,13 @@
 import { RawCreateParams, ZodNever } from 'zod';
-import { CastError } from '../CastError';
-import { CastableArgument } from './CastableArgument';
+import { Argument } from './Argument';
+import { ArgumentApi } from './ArgumentApi';
 
-export class NeverArgument extends CastableArgument<ZodNever> {
-	protected _cast(): never {
-		throw new CastError('Value is never - cannot cast');
-	}
-
+export class NeverArgument extends Argument<ZodNever> {
 	public static create(params?: RawCreateParams) {
 		return new NeverArgument(ZodNever.create(params), {});
 	}
+
+	public _getApi = (): ArgumentApi => {
+		throw new Error('Never argument api cannot be accessed');
+	};
 }

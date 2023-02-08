@@ -17,12 +17,16 @@ import {
 	DIRTY,
 	SyncParseReturnType,
 } from 'zod';
-import { Argument } from './Argument';
-import { ArgumentGroup, KeyValuePair } from './ArgumentGroup';
-import { BypassedArgument } from './BypassedArgument';
-import { CastableArgument } from './CastableArgument';
-import { NamedArgument } from './NamedArgument';
-import { PositionalArgument } from './PositionalArgument';
+import { Argument, ArgumentAny } from './Argument';
+import {
+	ArgumentApi,
+	ArgumentType,
+	BypassedArgumentApi,
+	CastableArgumentApi,
+	isCastableApi,
+	KeyValuePair,
+	PositionalArgumentApi,
+} from './ArgumentApi';
 
 export type ArgumentVectorDefinition<TArgument extends Argument> = {
 	configSchema: TArgument;
@@ -35,28 +39,41 @@ const longArgumentExpressionRe = /^--(?<name>[^\s=]+)=(?<value>.+)$/;
 const longArgumentNameRe = /^--(?<name>[^\s=]+)$/;
 const shortArgumentRe = /^-(?<flags>[^\s=]+)$/;
 
-export class ArgumentVector<TArgument extends Argument, TOutput = TypeOf<TArgument['_schema']>> extends ZodType<
+const synchronize = <TInput, TOutput>(
+	out: ParseReturnType<TInput>,
+	handler: (out: SyncParseReturnType<TInput>) => ParseReturnType<TOutput>,
+): ParseReturnType<TOutput> => {
+	if (out instanceof Promise) {
+		return out.then((syncOut) => handler(syncOut));
+	}
+
+	return handler(out);
+};
+
+export class ArgumentVector<TArgument extends ArgumentAny, TOutput = TypeOf<TArgument['_schema']>> extends ZodType<
 	TOutput,
 	ArgumentVectorDefinition<TArgument>,
 	string[]
 > {
-	private _getOption(argumentName: string): [path: string[], arg: CastableArgument] | undefined {
-		const schema = this._def.configSchema;
+	private _getOption(argumentName: string): [path: string[], arg: CastableArgumentApi] | undefined {
+		const argumentApi = this._def.configSchema._getApi();
 
 		const getArgumentName = this._def.getArgumentName ?? kebabCase;
 		const segments = argumentName.split('.');
 
-		if (schema instanceof ArgumentGroup) {
+		if (argumentApi.type === ArgumentType.GROUP) {
 			const fullPath: string[] = [];
 			let segment: string | undefined;
-			let currentSchema: CastableArgument | undefined = schema;
+			let currentSchema: Argument | undefined = this._def.configSchema;
 			while ((segment = segments.shift()) !== undefined) {
 				if (currentSchema === undefined) {
 					return undefined;
 				}
 
-				if (currentSchema instanceof ArgumentGroup) {
-					const value = currentSchema._getChildArgument(segment, getArgumentName);
+				const api: ArgumentApi = currentSchema._getApi();
+
+				if (api.type === ArgumentType.GROUP) {
+					const value: KeyValuePair<ArgumentAny> | undefined = api.getChildArgument(segment, getArgumentName);
 					if (value === undefined) {
 						return undefined;
 					}
@@ -67,18 +84,23 @@ export class ArgumentVector<TArgument extends Argument, TOutput = TypeOf<TArgume
 				}
 			}
 
-			return [fullPath, currentSchema];
+			const currentSchemaApi = currentSchema._getApi();
+			if (!isCastableApi(currentSchemaApi)) {
+				return undefined;
+			}
+
+			return [fullPath, currentSchemaApi];
 		}
 
-		if (schema instanceof NamedArgument) {
+		if (argumentApi.type === ArgumentType.NAMED) {
 			if (segments.length !== 1) {
 				return undefined;
 			}
 
-			const names = schema._getNames(undefined, getArgumentName);
+			const names = argumentApi.getNames(undefined, getArgumentName);
 
 			if (names.includes(argumentName)) {
-				return [[], schema];
+				return [[], argumentApi];
 			}
 
 			return undefined;
@@ -87,8 +109,8 @@ export class ArgumentVector<TArgument extends Argument, TOutput = TypeOf<TArgume
 		throw new Error('Unknown schema type provided');
 	}
 
-	private _filterArguments<T extends Argument>(
-		filter: (value: Argument) => value is T,
+	private _filterArguments<T extends ArgumentApi>(
+		filter: (value: ArgumentApi) => value is T,
 	): Array<KeyValuePair<T, string[]>> {
 		const output: Array<KeyValuePair<T, string[]>> = [];
 		const queue: Array<KeyValuePair<Argument, string[]>> = [{ key: [], value: this._def.configSchema }];
@@ -97,12 +119,10 @@ export class ArgumentVector<TArgument extends Argument, TOutput = TypeOf<TArgume
 		while ((currentItem = queue.shift()) !== undefined) {
 			const { key: currentPath, value: currentSchema } = currentItem;
 
-			if (filter(currentSchema)) {
-				output.push({ key: currentPath, value: currentSchema });
-			}
+			const api = currentSchema._getApi();
 
-			if (currentSchema instanceof ArgumentGroup) {
-				const childItems = currentSchema._getIterableChildArguments();
+			if (api.type === ArgumentType.GROUP) {
+				const childItems = api.getIterableChildArguments();
 				queue.push(
 					...childItems.map(({ key, value }) => ({
 						key: [...currentPath, key],
@@ -110,46 +130,57 @@ export class ArgumentVector<TArgument extends Argument, TOutput = TypeOf<TArgume
 					})),
 				);
 			}
+
+			if (filter(api)) {
+				output.push({ key: currentPath, value: api });
+			}
 		}
 
 		return output;
 	}
 
-	private _getPositionalArguments(): Array<KeyValuePair<PositionalArgument, string[]>> {
-		return this._filterArguments((item): item is PositionalArgument => item instanceof PositionalArgument);
+	private _getPositionalArguments(): Array<KeyValuePair<PositionalArgumentApi, string[]>> {
+		return this._filterArguments((item): item is PositionalArgumentApi => item.type === ArgumentType.POSITIONAL);
 	}
 
-	private _getBypassedArguments(): Array<KeyValuePair<BypassedArgument, string[]>> {
-		return this._filterArguments((item): item is BypassedArgument => item instanceof BypassedArgument);
+	private _getBypassedArguments(): Array<KeyValuePair<BypassedArgumentApi, string[]>> {
+		return this._filterArguments((item): item is BypassedArgumentApi => item.type === ArgumentType.BYPASSED);
 	}
 
 	/**
 	 * The purpose of ArgzArguments class is to process string array from "process.argv".
 	 * This method extracts key-value pairs from this array, and passes it into given schemas.
 	 */
-	public _parse(input: ParseInput): ParseReturnType<TOutput> {
+	public _parse = (input: ParseInput): ParseReturnType<TOutput> => {
 		const castResult = this._cast(input);
 
-		if (isAborted(castResult)) {
-			return INVALID;
-		}
+		return synchronize(castResult, (syncResult) => {
+			if (isAborted(syncResult)) {
+				return INVALID;
+			}
 
-		return this._def.configSchema._schema._parse({
-			data: castResult.value,
-			path: [],
-			parent: this._getOrReturnCtx(input),
+			return this._def.configSchema._schema._parse({
+				data: syncResult.value,
+				path: [],
+				parent: this._getOrReturnCtx(input),
+			});
 		});
-	}
+	};
 
-	public _cast(input: ParseInput): SyncParseReturnType<TOutput> {
-		const result = argumentsSchema._parseSync(input);
+	public _cast = (input: ParseInput): ParseReturnType<TOutput> => {
+		const result = argumentsSchema._parse(input);
 
-		if (isAborted(result)) {
-			return result;
-		}
+		return synchronize(result, (syncResult) => {
+			if (isAborted(syncResult)) {
+				return syncResult;
+			}
 
+			return this._doCast(input, syncResult);
+		});
+	};
+
+	private _doCast = (input: ParseInput, result: OK<string[]> | DIRTY<string[]>): ParseReturnType<TOutput> => {
 		const { status, ctx } = this._processInputParams(input);
-
 		const argv = result.value;
 
 		const positional: string[] = [];
@@ -270,7 +301,7 @@ export class ArgumentVector<TArgument extends Argument, TOutput = TypeOf<TArgume
 						const nextItem = argv[index + 1];
 
 						if (nextItem !== undefined && !nextItem.startsWith('-')) {
-							const output = option._tryCast(nextItem);
+							const output = option.tryCast(nextItem);
 
 							success = output.success;
 							if (output.success) {
@@ -281,7 +312,7 @@ export class ArgumentVector<TArgument extends Argument, TOutput = TypeOf<TArgume
 
 						success = true;
 					} else {
-						const output = option._tryCast(value);
+						const output = option.tryCast(value);
 
 						success = output.success;
 						if (output.success) {
@@ -318,15 +349,15 @@ export class ArgumentVector<TArgument extends Argument, TOutput = TypeOf<TArgume
 		}
 
 		pairs.sort((a, b) => a.key.length - b.key.length);
-		const constructedObjectWrapper = { value: {} };
+		const constructedObjectWrapper = { value: undefined };
 		for (const { key, value } of pairs) {
 			set(constructedObjectWrapper, ['value', ...key], value);
 		}
 
 		return { status: status.value, value: constructedObjectWrapper.value } as OK<TOutput> | DIRTY<TOutput>;
-	}
+	};
 
-	static create = <T extends Argument>(schema: T): ArgumentVector<T> => {
+	static create = <T extends ArgumentAny>(schema: T): ArgumentVector<T> => {
 		return new ArgumentVector({ configSchema: schema });
 	};
 }
