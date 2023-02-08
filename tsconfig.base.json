@@ -1,0 +1,27 @@
+{
+	"compilerOptions": {
+		"composite": true,
+		"target": "ES2022",
+		"module": "ES2022",
+		"moduleResolution": "node",
+		"emitDeclarationOnly": true,
+		"isolatedModules": true,
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"strict": true,
+		"noImplicitAny": true,
+		"strictNullChecks": true,
+		"strictFunctionTypes": true,
+		"strictBindCallApply": true,
+		"strictPropertyInitialization": true,
+		"noImplicitThis": true,
+		"useUnknownInCatchVariables": true,
+		"alwaysStrict": true,
+		"exactOptionalPropertyTypes": false,
+		"noImplicitReturns": true,
+		"noUncheckedIndexedAccess": true,
+		"noImplicitOverride": true,
+		"noPropertyAccessFromIndexSignature": true,
+		"skipLibCheck": false
+	}
+}
