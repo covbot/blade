@@ -48,7 +48,7 @@ export abstract class Argument<TSchema extends ZodTypeAny = ZodTypeAny, TDefinit
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	public _getSchema = (_rawArgumentName: string): TSchema => {
+	protected _getSchema = (_rawArgumentName: string): TSchema => {
 		return this._schema;
 	};
 
@@ -118,4 +118,7 @@ export abstract class Argument<TSchema extends ZodTypeAny = ZodTypeAny, TDefinit
 	public nullish(): import('./OptionalArgument').OptionalArgument<
 		import('./NullableArgument').NullableArgument<this>
 	>;
+
+	// @ts-expect-error
+	public or<T extends ArgumentAny>(option: T): import('./UnionArgument').UnionArgument<[this, T]>;
 }

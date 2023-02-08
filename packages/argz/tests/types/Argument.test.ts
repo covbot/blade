@@ -343,4 +343,24 @@ describe('Argument', () => {
 			});
 		});
 	});
+
+	describe('or', () => {
+		it('must create UnionArgument', () => {
+			const schema = ArgumentVector.create(
+				StringArgument.create({ name: 'hello' })
+					.email()
+					.or(StringArgument.create({ name: 'bye' }).endsWith('pass')),
+			);
+
+			expect(schema.safeParse(['--hello', 'w@a.com'])).toStrictEqual({
+				success: true,
+				data: 'w@a.com',
+			});
+
+			expect(schema.safeParse(['--bye', 'this pass'])).toStrictEqual({
+				success: true,
+				data: 'this pass',
+			});
+		});
+	});
 });
