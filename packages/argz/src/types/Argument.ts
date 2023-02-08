@@ -1,4 +1,4 @@
-import { util, ZodBranded, ZodDefault, ZodNullable, ZodOptional, ZodTypeAny } from 'zod';
+import { util, ZodBranded, ZodCatch, ZodDefault, ZodNullable, ZodOptional, ZodTypeAny } from 'zod';
 import { ArgumentApi } from './ArgumentApi';
 
 interface ArgumentConstructor<TSchema extends ZodTypeAny = ZodTypeAny, TDefinition = {}> {
@@ -16,8 +16,10 @@ export abstract class Argument<TSchema extends ZodTypeAny = ZodTypeAny, TDefinit
 		this._schema = schema;
 		this._definition = definition;
 		this._clone = this._clone.bind(this);
-		this.default = this.default.bind(this);
 		this.describe = this.describe.bind(this);
+		this.default = this.default.bind(this);
+		this.catch = this.catch.bind(this);
+		this.brand = this.brand.bind(this);
 		this.optional = this.optional.bind(this);
 		this.nullable = this.nullable.bind(this);
 		this.nullish = this.nullish.bind(this);
@@ -52,6 +54,12 @@ export abstract class Argument<TSchema extends ZodTypeAny = ZodTypeAny, TDefinit
 		defaultValue: util.noUndefined<TSchema['_input']> | (() => util.noUndefined<TSchema['_input']>),
 	): DefaultArgument<this> {
 		return new DefaultArgument(this._schema.default(defaultValue), { inner: this });
+	}
+
+	public catch(defaultValue: TSchema['_output']): CatchArgument<this>;
+	public catch(defaultValue: () => TSchema['_output']): CatchArgument<this>;
+	public catch(defaultValue: TSchema['_output'] | (() => TSchema['_output'])): CatchArgument<this> {
+		return new CatchArgument(this._schema.catch(defaultValue), { inner: this });
 	}
 
 	public brand<TBrand extends string | number | symbol>(brand?: TBrand): BrandedArgument<this, TBrand> {
@@ -114,4 +122,11 @@ export class OptionalArgument<TArgument extends ArgumentAny> extends WrappedArgu
 	ZodOptional<TArgument['_schema']>
 > {
 	public unwrap = this._unwrap;
+}
+
+export class CatchArgument<TArgument extends ArgumentAny> extends WrappedArgument<
+	TArgument,
+	ZodCatch<TArgument['_schema']>
+> {
+	public removeCatch = this._unwrap;
 }
