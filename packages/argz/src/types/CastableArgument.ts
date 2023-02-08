@@ -1,16 +1,7 @@
 import { TypeOf, ZodTypeAny } from 'zod';
-import { CastError } from '../CastError';
 import { Argument } from './Argument';
-
-export type CastResult<TValue> =
-	| {
-			success: true;
-			value: TValue;
-	  }
-	| {
-			success: false;
-			error: CastError;
-	  };
+import { CastResult } from './ArgumentApi';
+import { CastError } from '../CastError';
 
 export abstract class CastableArgument<TSchema extends ZodTypeAny = ZodTypeAny, TDefinition = {}> extends Argument<
 	TSchema,
@@ -18,7 +9,7 @@ export abstract class CastableArgument<TSchema extends ZodTypeAny = ZodTypeAny, 
 > {
 	protected abstract _cast(value: string | undefined): TSchema['_input'] | undefined;
 
-	public _tryCast(value: string | undefined): CastResult<TypeOf<TSchema>> {
+	protected _tryCast = (value: string | undefined): CastResult<TypeOf<TSchema>> => {
 		try {
 			const outputValue = this._cast(value);
 
@@ -36,5 +27,5 @@ export abstract class CastableArgument<TSchema extends ZodTypeAny = ZodTypeAny, 
 
 			throw error;
 		}
-	}
+	};
 }

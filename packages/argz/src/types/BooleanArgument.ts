@@ -1,9 +1,9 @@
 import { ZodBoolean } from 'zod';
-import { CastError } from '../CastError';
 import { NamedArgument } from './NamedArgument';
+import { CastError } from '../CastError';
 
 export class BooleanArgument extends NamedArgument<ZodBoolean> {
-	public _cast(value: string | undefined): boolean | undefined {
+	public _cast = (value: string | undefined): boolean | undefined => {
 		if (value === undefined) {
 			return value;
 		}
@@ -17,5 +17,5 @@ export class BooleanArgument extends NamedArgument<ZodBoolean> {
 		}
 
 		throw new CastError(`Value "${value}" isn't correct boolean value. Boolean values must be "true" or "false".`);
-	}
+	};
 }

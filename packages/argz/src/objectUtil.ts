@@ -1,7 +1,7 @@
-import { Argument } from './types/Argument';
+import { ArgumentAny } from './types/Argument';
 
 export namespace objectUtil {
-	export type ObjectArgumentRawShape = Record<string, Argument>;
+	export type ObjectArgumentRawShape = Record<string, ArgumentAny>;
 
 	export type ConvertShape<TShape extends ObjectArgumentRawShape> = {
 		[TKey in keyof TShape]: TShape[TKey]['_schema'];

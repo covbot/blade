@@ -1,4 +1,5 @@
 import { ZodTypeAny } from 'zod';
+import { ArgumentApi, ArgumentType } from './ArgumentApi';
 import { CastableArgument } from './CastableArgument';
 
 export type NamedArgumentDefinition = {
@@ -10,7 +11,7 @@ export abstract class NamedArgument<
 	TSchema extends ZodTypeAny = ZodTypeAny,
 	TDefinition extends NamedArgumentDefinition = NamedArgumentDefinition,
 > extends CastableArgument<TSchema, TDefinition> {
-	public _getNames(parentKey: string | undefined, getArgumentName: (key: string) => string): string[] {
+	protected _getNames = (parentKey: string | undefined, getArgumentName: (key: string) => string): string[] => {
 		let defaultName = this._definition.defaultName;
 
 		if (parentKey) {
@@ -23,9 +24,19 @@ export abstract class NamedArgument<
 		}
 
 		return names;
-	}
+	};
 
-	public alias(alias: string): this {
+	public _getApi = (): ArgumentApi => {
+		return {
+			type: ArgumentType.NAMED,
+			getSchema: this._getSchema,
+			cast: this._cast,
+			tryCast: this._tryCast,
+			getNames: this._getNames,
+		};
+	};
+
+	public alias = (alias: string): this => {
 		return this._clone(undefined, { ...this._definition, aliases: [...this._definition.aliases, alias] });
-	}
+	};
 }
