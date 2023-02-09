@@ -1,5 +1,16 @@
-import { ZodTypeAny, RefinementCtx, output, input, CustomErrorParams, IssueData, util } from 'zod';
+import {
+	ZodTypeAny,
+	RefinementCtx,
+	output,
+	input,
+	CustomErrorParams,
+	IssueData,
+	util,
+	ParseParams,
+	SafeParseReturnType,
+} from 'zod';
 import { Argument, ArgumentAny } from './Argument.internal';
+import { ArgumentVector } from './ArgumentVector';
 import { BrandedArgument } from './BrandedArgument';
 import { CatchArgument } from './CatchArgument';
 import { DefaultArgument } from './DefaultArgument';
@@ -77,4 +88,36 @@ Argument.prototype.or = function <T extends ArgumentAny>(this: Argument, option:
 
 Argument.prototype.pipe = function <T extends ZodTypeAny>(this: Argument, schema: T): PipelineArgument<Argument, T> {
 	return PipelineArgument.create(this, schema);
+};
+
+Argument.prototype.parse = function (
+	this: ArgumentAny,
+	data: unknown,
+	params?: Partial<ParseParams>,
+): output<ArgumentAny['_schema']> {
+	return ArgumentVector.create(this).parse(data, params);
+};
+
+Argument.prototype.safeParse = function (
+	this: ArgumentAny,
+	data: unknown,
+	params?: Partial<ParseParams>,
+): SafeParseReturnType<input<ArgumentAny['_schema']>, output<ArgumentAny['_schema']>> {
+	return ArgumentVector.create(this).safeParse(data, params);
+};
+
+Argument.prototype.parseAsync = function (
+	this: ArgumentAny,
+	data: unknown,
+	params?: Partial<ParseParams>,
+): Promise<output<ArgumentAny['_schema']>> {
+	return ArgumentVector.create(this).parseAsync(data, params);
+};
+
+Argument.prototype.safeParseAsync = function (
+	this: ArgumentAny,
+	data: unknown,
+	params?: Partial<ParseParams>,
+): Promise<SafeParseReturnType<input<ArgumentAny['_schema']>, output<ArgumentAny['_schema']>>> {
+	return ArgumentVector.create(this).safeParseAsync(data, params);
 };
