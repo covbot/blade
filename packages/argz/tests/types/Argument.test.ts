@@ -1,6 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { z, ZodError, ZodIssueCode } from 'zod';
-import { ArgumentVector, StringArgument } from '../../src/api';
+import { ArgumentVector, ObjectArgument, StringArgument } from '../../src/api';
 
 describe('Argument', () => {
 	describe('describe', () => {
@@ -376,6 +376,69 @@ describe('Argument', () => {
 			});
 
 			expect(schema.safeParse(['--hello', 'asdf'])).toStrictEqual({
+				success: false,
+				error: expect.any(ZodError),
+			});
+		});
+	});
+
+	describe('isOptional', () => {
+		it('must return true if schema is optional', () => {
+			expect(StringArgument.create().optional().isOptional()).toBe(true);
+			expect(StringArgument.create().nullish().isOptional()).toBe(true);
+			expect(ObjectArgument.create({}).optional().isOptional()).toBe(true);
+		});
+
+		it('must return false otherwise', () => {
+			expect(ObjectArgument.create({}).isOptional()).toBe(false);
+			expect(StringArgument.create().isOptional()).toBe(false);
+			expect(StringArgument.create().nullable().isOptional()).toBe(false);
+		});
+	});
+
+	describe('isNullable', () => {
+		it('must return true if schema is nullable', () => {
+			expect(StringArgument.create().nullable().isNullable()).toBe(true);
+			expect(StringArgument.create().nullish().isNullable()).toBe(true);
+			expect(ObjectArgument.create({}).nullable().isNullable()).toBe(true);
+		});
+
+		it('must return false otherwise', () => {
+			expect(ObjectArgument.create({}).isNullable()).toBe(false);
+			expect(StringArgument.create().isNullable()).toBe(false);
+			expect(StringArgument.create().optional().isNullable()).toBe(false);
+		});
+	});
+
+	describe('parse utilities', () => {
+		it('must create ArgumentVector and execute parse', async () => {
+			expect(StringArgument.create({ name: 'hello' }).parse(['--hello', 'world'])).toBe('world');
+
+			expect(StringArgument.create({ name: 'hello' }).safeParse(['--hello', 'world'])).toStrictEqual({
+				success: true,
+				data: 'world',
+			});
+
+			expect(
+				await StringArgument.create({ name: 'hello' })
+					.refine((value) => Promise.resolve(value === 'world'))
+					.parseAsync(['--hello', 'world']),
+			).toBe('world');
+
+			expect(
+				await StringArgument.create({ name: 'hello' })
+					.refine((value) => Promise.resolve(value === 'world'))
+					.safeParseAsync(['--hello', 'worl']),
+			).toStrictEqual({
+				success: false,
+				error: expect.any(ZodError),
+			});
+
+			expect(
+				await StringArgument.create({ name: 'hello' })
+					.refine((value) => Promise.resolve(value === 'world'))
+					.spa(['--hello', 'worl']),
+			).toStrictEqual({
 				success: false,
 				error: expect.any(ZodError),
 			});

@@ -6,7 +6,17 @@
  * the same file. So in this file, we just declare methods - their implementations are
  * in Argument.implementation.ts file.
  */
-import { util, ZodTypeAny, output, input, RefinementCtx, CustomErrorParams, IssueData } from 'zod';
+import {
+	util,
+	ZodTypeAny,
+	output,
+	input,
+	RefinementCtx,
+	CustomErrorParams,
+	IssueData,
+	ParseParams,
+	SafeParseReturnType,
+} from 'zod';
 import { ArgumentApi } from './ArgumentApi';
 
 interface ArgumentConstructor<TSchema extends ZodTypeAny = ZodTypeAny, TDefinition = {}> {
@@ -37,6 +47,10 @@ export abstract class Argument<TSchema extends ZodTypeAny = ZodTypeAny, TDefinit
 		this.nullish = this.nullish.bind(this);
 		this.or = this.or.bind(this);
 		this.pipe = this.pipe.bind(this);
+		this.parse = this.parse.bind(this);
+		this.safeParse = this.safeParse.bind(this);
+		this.parseAsync = this.parseAsync.bind(this);
+		this.safeParseAsync = this.safeParseAsync.bind(this);
 	}
 
 	protected _clone(schema?: TSchema, definition?: TDefinition): this {
@@ -126,4 +140,32 @@ export abstract class Argument<TSchema extends ZodTypeAny = ZodTypeAny, TDefinit
 
 	// @ts-expect-error
 	public pipe<T extends ZodTypeAny>(schema: T): import('./PipelineArgument').PipelineArgument<this, T>;
+
+	public isOptional = (): boolean => {
+		return this._schema.isOptional();
+	};
+
+	public isNullable = (): boolean => {
+		return this._schema.isNullable();
+	};
+
+	// @ts-expect-error
+	public parse(data: unknown, params?: Partial<ParseParams>): output<TSchema>;
+
+	// @ts-expect-error
+	public safeParse(
+		data: unknown,
+		params?: Partial<ParseParams>,
+	): SafeParseReturnType<input<TSchema>, output<TSchema>>;
+
+	// @ts-expect-error
+	public parseAsync(data: unknown, params?: Partial<ParseParams>): Promise<output<TSchema>>;
+
+	// @ts-expect-error
+	public safeParseAsync(
+		data: unknown,
+		params?: Partial<ParseParams>,
+	): Promise<SafeParseReturnType<input<TSchema>, output<TSchema>>>;
+
+	public spa = this.safeParseAsync;
 }
