@@ -16,17 +16,10 @@ import {
 	OK,
 	DIRTY,
 	SyncParseReturnType,
+	isDirty,
 } from 'zod';
 import { Argument, ArgumentAny } from './Argument.internal';
-import {
-	ArgumentApi,
-	ArgumentType,
-	BypassedArgumentApi,
-	CastableArgumentApi,
-	isCastableApi,
-	KeyValuePair,
-	PositionalArgumentApi,
-} from './ArgumentApi';
+import { ArgumentApi, ArgumentType, CastableArgumentApi, KeyValuePair } from './ArgumentApi';
 
 export type ArgumentVectorDefinition<TArgument extends Argument> = {
 	configSchema: TArgument;
@@ -61,46 +54,61 @@ export class ArgumentVector<TArgument extends Argument, TOutput = TypeOf<TArgume
 		const getArgumentName = this._def.getArgumentName ?? kebabCase;
 		const segments = argumentName.split('.');
 
-		if (argumentApi.type === ArgumentType.GROUP) {
+		if (argumentApi.grouped) {
 			const fullPath: string[] = [];
 			let segment: string | undefined;
-			let currentSchema: Argument | undefined = this._def.configSchema;
+			let currentApi: ArgumentApi | undefined;
+
+			if (argumentApi.named) {
+				const rootNames = argumentApi.named.getNames(undefined, getArgumentName);
+				if (rootNames.length === 0) {
+					currentApi = argumentApi;
+				} else if (segments[0] && rootNames.includes(segments[0])) {
+					currentApi = argumentApi;
+					segments.shift();
+				}
+			} else {
+				currentApi = argumentApi;
+			}
+
 			while ((segment = segments.shift()) !== undefined) {
-				if (currentSchema === undefined) {
+				if (currentApi === undefined) {
 					return undefined;
 				}
 
-				const api: ArgumentApi = currentSchema._getApi();
+				if (currentApi.grouped) {
+					const value: KeyValuePair<ArgumentAny> | undefined = currentApi.grouped.getChildArgument(
+						segment,
+						getArgumentName,
+					);
 
-				if (api.type === ArgumentType.GROUP) {
-					const value: KeyValuePair<ArgumentAny> | undefined = api.getChildArgument(segment, getArgumentName);
 					if (value === undefined) {
 						return undefined;
 					}
+
 					fullPath.push(value.key);
-					currentSchema = value.value;
+					currentApi = value.value._getApi();
 				} else {
 					return undefined;
 				}
 			}
 
-			const currentSchemaApi = currentSchema._getApi();
-			if (!isCastableApi(currentSchemaApi)) {
+			if (currentApi?.castable === undefined) {
 				return undefined;
 			}
 
-			return [fullPath, currentSchemaApi];
+			return [fullPath, currentApi.castable];
 		}
 
-		if (argumentApi.type === ArgumentType.NAMED) {
+		if (argumentApi.named) {
 			if (segments.length !== 1) {
 				return undefined;
 			}
 
-			const names = argumentApi.getNames(undefined, getArgumentName);
+			const names = argumentApi.named.getNames(undefined, getArgumentName);
 
-			if (names.includes(argumentName)) {
-				return [[], argumentApi];
+			if (names.includes(argumentName) && argumentApi.castable) {
+				return [[], argumentApi.castable];
 			}
 
 			return undefined;
@@ -109,10 +117,8 @@ export class ArgumentVector<TArgument extends Argument, TOutput = TypeOf<TArgume
 		throw new Error('Unknown schema type provided');
 	}
 
-	private _filterArguments<T extends ArgumentApi>(
-		filter: (value: ArgumentApi) => value is T,
-	): Array<KeyValuePair<T, string[]>> {
-		const output: Array<KeyValuePair<T, string[]>> = [];
+	private _findAllArgumentPaths(filter: (value: ArgumentApi) => boolean): string[][] {
+		const output: string[][] = [];
 		const queue: Array<KeyValuePair<Argument, string[]>> = [{ key: [], value: this._def.configSchema }];
 
 		let currentItem: KeyValuePair<Argument, string[]> | undefined;
@@ -121,8 +127,8 @@ export class ArgumentVector<TArgument extends Argument, TOutput = TypeOf<TArgume
 
 			const api = currentSchema._getApi();
 
-			if (api.type === ArgumentType.GROUP) {
-				const childItems = api.getIterableChildArguments();
+			if (api.grouped) {
+				const childItems = api.grouped.getIterableChildArguments();
 				queue.push(
 					...childItems.map(({ key, value }) => ({
 						key: [...currentPath, key],
@@ -132,19 +138,19 @@ export class ArgumentVector<TArgument extends Argument, TOutput = TypeOf<TArgume
 			}
 
 			if (filter(api)) {
-				output.push({ key: currentPath, value: api });
+				output.push(currentPath);
 			}
 		}
 
 		return output;
 	}
 
-	private _getPositionalArguments(): Array<KeyValuePair<PositionalArgumentApi, string[]>> {
-		return this._filterArguments((item): item is PositionalArgumentApi => item.type === ArgumentType.POSITIONAL);
+	private _getPositionalArgumentPaths(): string[][] {
+		return this._findAllArgumentPaths((item) => item.type === ArgumentType.POSITIONAL);
 	}
 
-	private _getBypassedArguments(): Array<KeyValuePair<BypassedArgumentApi, string[]>> {
-		return this._filterArguments((item): item is BypassedArgumentApi => item.type === ArgumentType.BYPASSED);
+	private _getBypassedArgumentPaths(): string[][] {
+		return this._findAllArgumentPaths((item) => item.type === ArgumentType.BYPASSED);
 	}
 
 	/**
@@ -159,10 +165,25 @@ export class ArgumentVector<TArgument extends Argument, TOutput = TypeOf<TArgume
 				return INVALID;
 			}
 
-			return this._def.configSchema._schema._parse({
+			const parseResult = this._def.configSchema._schema._parse({
 				data: syncResult.value,
 				path: [],
 				parent: this._getOrReturnCtx(input),
+			});
+
+			return synchronize(parseResult, (syncParseResult) => {
+				if (isAborted(syncParseResult)) {
+					return INVALID;
+				}
+
+				if (isDirty(syncResult)) {
+					return {
+						status: 'dirty',
+						value: syncParseResult.value,
+					};
+				}
+
+				return syncParseResult;
 			});
 		});
 	};
@@ -339,12 +360,12 @@ export class ArgumentVector<TArgument extends Argument, TOutput = TypeOf<TArgume
 			return INVALID;
 		}
 
-		const positionalOptions = this._getPositionalArguments();
-		for (const { key } of positionalOptions) {
+		const positionalPaths = this._getPositionalArgumentPaths();
+		for (const key of positionalPaths) {
 			pairs.push({ key, value: positional });
 		}
-		const bypassedOptions = this._getBypassedArguments();
-		for (const { key } of bypassedOptions) {
+		const bypassedPaths = this._getBypassedArgumentPaths();
+		for (const key of bypassedPaths) {
 			pairs.push({ key, value: bypassed });
 		}
 

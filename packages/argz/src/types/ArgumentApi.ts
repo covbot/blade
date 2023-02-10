@@ -3,10 +3,11 @@ import { ArgumentAny } from './Argument.internal';
 import { CastError } from '../CastError';
 
 export enum ArgumentType {
-	NAMED,
-	POSITIONAL,
-	BYPASSED,
-	GROUP,
+	NAMED = 'named',
+	POSITIONAL = 'positional',
+	BYPASSED = 'bypassed',
+	GROUP = 'grouped',
+	CASTABLE = 'castable',
 }
 
 export type CastResult<TValue> =
@@ -19,45 +20,36 @@ export type CastResult<TValue> =
 			error: CastError;
 	  };
 
-export type GeneralArgumentApi = {
+export type CommonArgumentApi = {
 	getSchema(argumentName: string | undefined): ZodTypeAny;
 };
 
-export interface CastableArgumentApi extends GeneralArgumentApi {
+export type CastableArgumentApi = {
 	cast(value: string | undefined): unknown;
 	tryCast(value: string | undefined): CastResult<unknown>;
-}
+};
 
 export type KeyValuePair<TValue, TKey = string> = {
 	key: TKey;
 	value: TValue;
 };
 
-export interface NamedArgumentApi extends CastableArgumentApi {
-	type: ArgumentType.NAMED;
+export type NamedArgumentApi = {
 	getNames(parentKey: string | undefined, getArgumentName: (key: string) => string): string[];
-}
+};
 
-export interface GroupedArgumentApi extends Omit<NamedArgumentApi, 'type'> {
-	type: ArgumentType.GROUP;
+export type GroupedArgumentApi = {
 	getChildArgument(
 		childName: string,
 		getArgumentName: (key: string) => string,
 	): KeyValuePair<ArgumentAny> | undefined;
 	getIterableChildArguments(): Array<KeyValuePair<ArgumentAny>>;
-}
+};
 
-export interface PositionalArgumentApi extends GeneralArgumentApi {
-	type: ArgumentType.POSITIONAL;
-}
-
-export interface BypassedArgumentApi extends GeneralArgumentApi {
-	type: ArgumentType.BYPASSED;
-}
-
-export type ArgumentApi = NamedArgumentApi | GroupedArgumentApi | PositionalArgumentApi | BypassedArgumentApi;
-
-export const isCastableApi = (api: ArgumentApi): api is NamedArgumentApi | GroupedArgumentApi =>
-	[ArgumentType.NAMED, ArgumentType.GROUP].includes(api.type);
-
-export const isNamedApi = isCastableApi;
+export type ArgumentApi = {
+	type: ArgumentType;
+	common: CommonArgumentApi;
+	castable?: CastableArgumentApi;
+	named?: NamedArgumentApi;
+	grouped?: GroupedArgumentApi;
+};

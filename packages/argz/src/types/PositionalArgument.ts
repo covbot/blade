@@ -9,7 +9,9 @@ export abstract class PositionalArgument<TSchema extends ZodTypeAny = ZodTypeAny
 	public _getApi = (): ArgumentApi => {
 		return {
 			type: ArgumentType.POSITIONAL,
-			getSchema: this._getSchema,
+			common: {
+				getSchema: this._getSchema,
+			},
 		};
 	};
 }

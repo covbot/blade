@@ -11,6 +11,11 @@ export abstract class NamedArgument<
 	TSchema extends ZodTypeAny = ZodTypeAny,
 	TDefinition extends NamedArgumentDefinition = NamedArgumentDefinition,
 > extends CastableArgument<TSchema, TDefinition> {
+	public constructor(schema: TSchema, definition: TDefinition) {
+		super(schema, definition);
+		this._getApi = this._getApi.bind(this);
+	}
+
 	protected _getNames = (parentKey: string | undefined, getArgumentName: (key: string) => string): string[] => {
 		let defaultName = this._definition.defaultName;
 
@@ -26,15 +31,17 @@ export abstract class NamedArgument<
 		return names;
 	};
 
-	public _getApi = (): ArgumentApi => {
+	public override _getApi(): ArgumentApi {
+		const parentApi = super._getApi();
+
 		return {
+			...parentApi,
 			type: ArgumentType.NAMED,
-			getSchema: this._getSchema,
-			cast: this._cast,
-			tryCast: this._tryCast,
-			getNames: this._getNames,
+			named: {
+				getNames: this._getNames,
+			},
 		};
-	};
+	}
 
 	public alias = (alias: string): this => {
 		return this._clone(undefined, { ...this._definition, aliases: [...this._definition.aliases, alias] });

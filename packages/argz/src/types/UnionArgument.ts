@@ -1,17 +1,10 @@
 import assert from 'node:assert';
 import { ZodUnion, RawCreateParams } from 'zod';
 import { Argument, ArgumentAny } from './Argument.internal';
-import {
-	ArgumentType,
-	NamedArgumentApi,
-	GroupedArgumentApi,
-	KeyValuePair,
-	ArgumentApi,
-	BypassedArgumentApi,
-	PositionalArgumentApi,
-} from './ArgumentApi';
+import { ArgumentType, KeyValuePair, ArgumentApi } from './ArgumentApi';
 import { GroupedArgument } from './GroupedArgument';
 import { NamedArgumentDefinition } from './NamedArgument';
+import { argumentUtils } from '../argumentUtils';
 import { CastError } from '../CastError';
 import { convertUtils } from '../convertUtils';
 
@@ -40,6 +33,7 @@ export class UnionArgument<TOptions extends UnionArgumentOptions> extends Groupe
 		definition: UnionArgumentDefinition<TOptions>,
 	) {
 		super(schema, definition);
+		this._getApi = this._getApi.bind(this);
 
 		let type: ArgumentType | undefined = undefined;
 		for (const option of definition.options) {
@@ -55,13 +49,16 @@ export class UnionArgument<TOptions extends UnionArgumentOptions> extends Groupe
 		}
 	}
 
-	private static assertAllNamed = (options: UnionArgumentOptions): (NamedArgumentApi | GroupedArgumentApi)[] => {
-		const optionApis = options.map((option) => option._getApi());
+	private static assertAllOptions = (
+		options: UnionArgumentOptions,
+	): argumentUtils.AssertedArgumentFeatures<'named' | 'castable'>[] => {
+		const optionApis: ArgumentApi[] = options.map((option) => option._getApi());
 
-		const correctTypes = new Set([ArgumentType.GROUP, ArgumentType.NAMED]);
 		assert(
-			optionApis.every((value): value is NamedArgumentApi | GroupedArgumentApi => correctTypes.has(value.type)),
-			'[argz fatal]: Malformed union. Most likely, this is issue with argz.',
+			optionApis.every((api): api is argumentUtils.AssertedArgumentFeatures<'named' | 'castable'> =>
+				argumentUtils.checkApiFeatures(api, ['named', 'castable']),
+			),
+			'[argz internal]: Malformed UnionArgument. Most likely, that is an issue with argz.',
 		);
 
 		return optionApis;
@@ -71,18 +68,17 @@ export class UnionArgument<TOptions extends UnionArgumentOptions> extends Groupe
 		parentKey: string | undefined,
 		getArgumentName: (key: string) => string,
 	): string[] => {
-		const optionApis = UnionArgument.assertAllNamed(this._definition.options);
+		const optionApis = UnionArgument.assertAllOptions(this._definition.options);
 
-		const allNames = optionApis.flatMap((api) => api.getNames(parentKey, getArgumentName));
-		const dedupedNames = [...new Set(allNames)];
-		return dedupedNames;
+		const allNames = optionApis.flatMap((api) => api.named.getNames(parentKey, getArgumentName));
+		return [...new Set(allNames)];
 	};
 
 	protected override _cast = (value: string | undefined): unknown => {
-		const optionApis = UnionArgument.assertAllNamed(this._definition.options);
+		const optionApis = UnionArgument.assertAllOptions(this._definition.options);
 
 		for (const api of optionApis) {
-			const castResult = api.tryCast(value);
+			const castResult = api.castable.tryCast(value);
 			if (castResult.success) {
 				return castResult.value;
 			}
@@ -92,14 +88,14 @@ export class UnionArgument<TOptions extends UnionArgumentOptions> extends Groupe
 	};
 
 	protected override _getIterableChildArguments = () => {
-		const optionApis = UnionArgument.assertAllNamed(this._definition.options);
+		const optionApis = UnionArgument.assertAllOptions(this._definition.options);
 
 		return optionApis.flatMap((value) => {
-			if (value.type === ArgumentType.NAMED) {
+			if (!value.grouped) {
 				return [];
 			}
 
-			return value.getIterableChildArguments();
+			return value.grouped.getIterableChildArguments();
 		});
 	};
 
@@ -107,11 +103,13 @@ export class UnionArgument<TOptions extends UnionArgumentOptions> extends Groupe
 		childName: string,
 		getArgumentName: (key: string) => string,
 	): KeyValuePair<Argument> | undefined => {
-		const optionApis = UnionArgument.assertAllNamed(this._definition.options);
+		console.log(childName);
+		const optionApis = UnionArgument.assertAllOptions(this._definition.options);
 
 		for (const api of optionApis) {
-			if (api.type === ArgumentType.GROUP) {
-				const childOption = api.getChildArgument(childName, getArgumentName);
+			if (api.grouped) {
+				const childOption = api.grouped.getChildArgument(childName, getArgumentName);
+				console.log(childOption);
 				if (childOption !== undefined) {
 					return childOption;
 				}
@@ -121,39 +119,47 @@ export class UnionArgument<TOptions extends UnionArgumentOptions> extends Groupe
 		return undefined;
 	};
 
-	public override _getApi = (): ArgumentApi => {
+	public override _getApi(): ArgumentApi {
 		const api = this._definition.options[0]._getApi();
-		if (nonCastableTypes.has(api.type)) {
-			return {
-				type: api.type,
+
+		const apiBase: ArgumentApi = {
+			type: api.type,
+			common: {
 				getSchema: this._getSchema,
-			} as BypassedArgumentApi | PositionalArgumentApi;
+			},
+		};
+
+		if (nonCastableTypes.has(api.type)) {
+			return apiBase;
 		}
 
-		const optionApis = UnionArgument.assertAllNamed(this._definition.options);
+		apiBase.castable = {
+			cast: this._cast,
+			tryCast: this._tryCast,
+		};
+		apiBase.named = {
+			getNames: this._getNames,
+		};
 
+		const optionApis = UnionArgument.assertAllOptions(this._definition.options);
 		const groupType = optionApis.find((option) => option.type === ArgumentType.GROUP)?.type ?? ArgumentType.NAMED;
 
 		if (groupType === ArgumentType.NAMED) {
 			return {
+				...apiBase,
 				type: groupType,
-				getSchema: this._getSchema,
-				getNames: this._getNames,
-				cast: this._cast,
-				tryCast: this._tryCast,
 			};
 		}
 
 		return {
+			...apiBase,
 			type: groupType,
-			getSchema: this._getSchema,
-			getNames: this._getNames,
-			cast: this._cast,
-			tryCast: this._tryCast,
-			getIterableChildArguments: this._getIterableChildArguments,
-			getChildArgument: this._getChildArgument,
+			grouped: {
+				getIterableChildArguments: this._getIterableChildArguments,
+				getChildArgument: this._getChildArgument,
+			},
 		};
-	};
+	}
 
 	static create = <TOptions extends Readonly<[ArgumentAny, ArgumentAny, ...ArgumentAny[]]>>(
 		options: TOptions,

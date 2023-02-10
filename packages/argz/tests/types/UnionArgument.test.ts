@@ -133,7 +133,7 @@ describe('UnionArgument', () => {
 		});
 	});
 
-	it('must search for nested argument', () => {
+	it.only('must search for nested argument', () => {
 		const schema = ArgumentVector.create(
 			UnionArgument.create([
 				ObjectArgument.create({

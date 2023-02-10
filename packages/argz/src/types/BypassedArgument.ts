@@ -9,7 +9,9 @@ export abstract class BypassedArgument<TSchema extends ZodTypeAny = ZodTypeAny, 
 	public _getApi = (): ArgumentApi => {
 		return {
 			type: ArgumentType.BYPASSED,
-			getSchema: this._getSchema,
+			common: {
+				getSchema: this._getSchema,
+			},
 		};
 	};
 }

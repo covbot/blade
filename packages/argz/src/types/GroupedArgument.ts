@@ -9,6 +9,11 @@ export abstract class GroupedArgument<
 	TSchema extends ZodTypeAny = ZodTypeAny,
 	TDefinition extends ArgumentGroupDefinition = ArgumentGroupDefinition,
 > extends NamedArgument<TSchema, TDefinition> {
+	public constructor(schema: TSchema, definition: TDefinition) {
+		super(schema, definition);
+		this._getApi = this._getApi.bind(this);
+	}
+
 	protected abstract _getChildArgument(
 		childName: string,
 		getArgumentName: (key: string) => string,
@@ -16,15 +21,16 @@ export abstract class GroupedArgument<
 
 	protected abstract _getIterableChildArguments(): Array<KeyValuePair<Argument>>;
 
-	public override _getApi = (): ArgumentApi => {
+	public override _getApi(): ArgumentApi {
+		const parentApi = super._getApi();
+
 		return {
+			...parentApi,
 			type: ArgumentType.GROUP,
-			cast: this._cast,
-			tryCast: this._tryCast,
-			getChildArgument: this._getChildArgument,
-			getIterableChildArguments: this._getIterableChildArguments,
-			getNames: this._getNames,
-			getSchema: this._getSchema,
+			grouped: {
+				getChildArgument: this._getChildArgument,
+				getIterableChildArguments: this._getIterableChildArguments,
+			},
 		};
-	};
+	}
 }

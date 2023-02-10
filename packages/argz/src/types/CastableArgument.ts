@@ -1,12 +1,17 @@
 import { TypeOf, ZodTypeAny } from 'zod';
 import { Argument } from './Argument.internal';
-import { CastResult } from './ArgumentApi';
+import { ArgumentApi, ArgumentType, CastResult } from './ArgumentApi';
 import { CastError } from '../CastError';
 
 export abstract class CastableArgument<TSchema extends ZodTypeAny = ZodTypeAny, TDefinition = {}> extends Argument<
 	TSchema,
 	TDefinition
 > {
+	public constructor(schema: TSchema, definition: TDefinition) {
+		super(schema, definition);
+		this._getApi = this._getApi.bind(this);
+	}
+
 	protected abstract _cast(value: string | undefined): unknown;
 
 	protected _tryCast = (value: string | undefined): CastResult<TypeOf<TSchema>> => {
@@ -28,4 +33,17 @@ export abstract class CastableArgument<TSchema extends ZodTypeAny = ZodTypeAny, 
 			throw error;
 		}
 	};
+
+	public _getApi(): ArgumentApi {
+		return {
+			type: ArgumentType.CASTABLE,
+			common: {
+				getSchema: this._getSchema,
+			},
+			castable: {
+				cast: this._cast,
+				tryCast: this._tryCast,
+			},
+		};
+	}
 }
