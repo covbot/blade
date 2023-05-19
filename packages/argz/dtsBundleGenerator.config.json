@@ -1,0 +1,15 @@
+{
+	"compilationOptions": {
+		"preferredConfigPath": "./tsconfig.main.json"
+	},
+	"entries": [
+		{
+			"filePath": "./src/index.ts",
+			"outFile": "./dist/index.d.ts",
+			"noCheck": true,
+			"libraries": {
+				"importedLibraries": ["zod"]
+			}
+		}
+	]
+}
